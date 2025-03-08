@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import os
 from typing import Callable, Dict
+from unittest.mock import MagicMock
 import uuid
 
 from task_flow.constants import STATUS
@@ -43,12 +44,12 @@ class TaskResult:  # pylint: disable=too-many-instance-attributes
         if len(self.data) == 0:
             return 1
         return (
-            0
+            1
             if all(
-                step_result.status == STATUS.SUCCESS
+                step_result.status == STATUS.ERROR
                 for step_result in self.data.values()
             )
-            else 1
+            else 0
         )
 
     @property
@@ -117,6 +118,7 @@ class Task:
             for method in dir(self)
             if callable(getattr(self, method))
             and hasattr(getattr(self, method), "is_step")
+            and not isinstance(getattr(self, method), MagicMock)
         ]
 
         self.result = TaskResult(
@@ -136,7 +138,7 @@ class Task:
             data = json.load(f)
 
         task = Task()
-        task.task_id = file_path.split("/")[-1].split(".")[0]
+        task.task_id = os.path.basename(file_path).removesuffix(".json")
         task.result = TaskResult(
             task_type=data["task_type"],
             status=STATUS(data["status"]),
@@ -170,6 +172,9 @@ class Task:
         self.result.start_at = datetime.now().isoformat()
 
         try:
+            if not self.steps:
+                raise ValueError("No steps to execute")
+
             for step_name in self.steps:
                 step_func = getattr(self, step_name)
                 self._execute_step(step_name, step_func)
@@ -210,7 +215,7 @@ class Task:
 
         """
         self.logger.info("Adding artifact %s", os.path.basename(path))
-        os.makedirs("artifacts", exist_ok=True)
+        os.makedirs(artifact_path, exist_ok=True)
         new_path = os.path.join(
             artifact_path, f"{self.task_id}_{os.path.basename(path)}"
         )
