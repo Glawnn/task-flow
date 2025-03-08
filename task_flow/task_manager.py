@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from json import JSONDecodeError
 import os
 import threading
 from typing import Dict, List
@@ -32,18 +33,22 @@ class TaskManager:
         self.path_artifact = path_artifact
         self.path_result = path_result
 
-    def load_from_disk(self, path: str = "results/"):
+    def load_from_disk(self):
         """Load tasks from disk
 
         Args:
             path (str): Path to the directory where the tasks are stored
 
         """
-        for file in os.listdir(path):
+        for file in os.listdir(self.path_result):
             task_id = file.split(".")[0]
             self.logger.info("Loading task %s from disk", task_id)
-            task = Task.load_from_file(os.path.join(path, file))
-            self.tasks[task_id] = task
+            try:
+                task = Task.load_from_file(os.path.join(self.path_result, file))
+            except JSONDecodeError:
+                self.logger.error("Error loading task %s from disk", task_id)
+            else:
+                self.tasks[task_id] = task
 
     def add_task(self, task_class: Task) -> str:
         """Add a task to the task manager and add it to the execution queue
