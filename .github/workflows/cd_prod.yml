@@ -1,0 +1,78 @@
+name: Deploy to PyPI 
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+  validate-ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run formatter
+        run: poetry run black .
+
+      - name: Run Linter (flake8)
+        run: |
+          poetry run flake8 --max-line-length=120 task_flow && \
+          poetry run flake8 --max-line-length=120 tests
+
+      - name: Run Linter (pylint)
+        run: poetry run pylint task_flow
+
+      - name: Run Tests
+        run: poetry run test
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.email "vodkas3630@gmail.com"
+          git config --global user.name "Vodkas"
+  
+      - name: Catch version and commit id
+        run: |
+          echo "new_version=v$(poetry version -s)" >> $GITHUB_ENV
+          echo "commit_id=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+  
+      - name: Create tag
+        run: |
+          git tag "${{ env.new_version }}-${{ env.commit_id }}"
+          git push origin "${{ env.new_version }}-${{ env.commit_id }}"
+  
+      - name: Publish to PyPI
+        run: |
+          poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
+          poetry publish --build

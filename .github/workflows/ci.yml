@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "*"
+      - "!master"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run formatter
+        run: poetry run black .
+
+      - name: Run Linter (flake8)
+        run: |
+          poetry run flake8 --max-line-length=120 task_flow && \
+          poetry run flake8 --max-line-length=120 tests
+
+      - name: Run Linter (pylint)
+        run: poetry run pylint task_flow
+
+      - name: Run Tests
+        run: poetry run test
