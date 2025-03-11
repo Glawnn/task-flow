@@ -73,3 +73,13 @@ def get_task_logger(
         >>> logger.debug("This is a debug message")
     """
     return get_logger(f"{task_id}", path_to_save=path_to_save)
+
+
+def close_loggers():
+    """Close all loggers properly"""
+    for logger_name in list(logging.Logger.manager.loggerDict.keys()):
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers:
+            handler.close()
+            logger.removeHandler(handler)
+    logging.shutdown()

@@ -108,9 +108,9 @@ class Task:
 
     """
 
-    def __init__(self):
+    def __init__(self, path_log: str = "logs/tasks"):
         self.task_id = f"task-{uuid.uuid4()}"
-        self.logger = get_task_logger(self.task_id)
+        self.logger = get_task_logger(self.task_id, path_log)
         self.is_executable = True
 
         self.steps = [
@@ -156,7 +156,7 @@ class Task:
         task.is_executable = False
         return task
 
-    def execute(self):
+    def execute(self, path_result: str = "results/") -> Dict:
         """Execute the task
 
         This method will execute the steps of the task in the order they are defined.
@@ -188,7 +188,7 @@ class Task:
 
         self.result.end_at = datetime.now().isoformat()
 
-        self.save_result()
+        self.save_result(path=path_result)
 
         return self.result.to_dict()
 

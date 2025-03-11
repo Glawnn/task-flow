@@ -7,7 +7,7 @@ import os
 import threading
 from typing import Dict, List
 
-from task_flow.setup_logger import get_logger
+from task_flow.setup_logger import close_loggers, get_logger
 from task_flow.task import Task
 
 
@@ -25,13 +25,16 @@ class TaskManager:
         max_threads: int = 10,
         path_artifact: str = "artifacts/",
         path_result: str = "results/",
+        path_logs: str = "logs/",
     ):
         self.tasks: Dict[str, Task] = {}
         self.executor = ThreadPoolExecutor(max_threads)
         self.lock = threading.Lock()
-        self.logger = get_logger()
+
         self.path_artifact = path_artifact
         self.path_result = path_result
+        self.path_logs = path_logs
+        self.logger = get_logger(path_to_save=self.path_logs)
 
     def load_from_disk(self):
         """Load tasks from disk
@@ -59,7 +62,7 @@ class TaskManager:
         Returns:
             str: Task ID
         """
-        task: Task = task_class()
+        task: Task = task_class(self.path_logs)
         self.logger.info(
             "Adding task %s with id %s", task_class.__name__, task.task_id
         )
@@ -73,7 +76,7 @@ class TaskManager:
 
         self.logger.info("Starting task %s", task_id)
         task = self.tasks[task_id]
-        task_executor = self.executor.submit(task.execute)
+        task_executor = self.executor.submit(task.execute, self.path_result)
         task_executor.add_done_callback(
             lambda f: self.logger.info("Task %s finished", task_id)
         )
@@ -148,3 +151,4 @@ class TaskManager:
         )
         self.executor.shutdown(wait=True)
         self.logger.info("All tasks finished, shutting down")
+        close_loggers()

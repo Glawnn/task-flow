@@ -37,8 +37,11 @@ jobs:
       - name: Run Linter (pylint)
         run: poetry run pylint task_flow
 
-      - name: Run Tests
-        run: poetry run test
+      - name: Run Unit Tests
+        run:  poetry run pytest -v tests -m unit
+      
+      - name: Run Integration Tests
+        run: poetry run pytest -v tests -m integration
 
   deploy:
     runs-on: ubuntu-latest
